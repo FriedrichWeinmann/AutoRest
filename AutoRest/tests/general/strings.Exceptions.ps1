@@ -13,7 +13,16 @@ $exceptions['LegalSurplus'] = @(
 )
 #>
 $exceptions['LegalSurplus'] = @(
+	
+)
 
+<#
+A list of entries that MAY be used without being contained in the language file.
+It is assumed the strings are provided externally, such as another module this module depends on.
+#>
+$exceptions['ForeignSourced'] = @(
+	'Validate.FSPath.File'
+	'Validate.FSPath.Folder'
 )
 
 $exceptions

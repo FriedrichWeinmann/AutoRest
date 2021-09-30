@@ -3,7 +3,7 @@
 	RootModule = 'AutoRest.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0'
+	ModuleVersion = '0.1.0'
 	
 	# ID used to uniquely identify this module
 	GUID = '18c33632-995c-4b5e-82fb-c52c2f6a176f'
@@ -27,8 +27,8 @@
 	# this module
 	RequiredModules = @(
 		@{ ModuleName = 'PSFramework'; ModuleVersion = '1.6.205' }
-		@{ ModuleName = 'ImportExcel'; ModuleVersion = '7.1.0' }
-		@{ ModuleName = 'String'; ModuleVersion = '0.6.1' }
+#		@{ ModuleName = 'ImportExcel'; ModuleVersion = '7.1.0' }
+		@{ ModuleName = 'String'; ModuleVersion = '1.0.0' }
 	)
 	
 	# Assemblies that must be loaded prior to importing this module
@@ -42,9 +42,8 @@
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
-		'ConvertFrom-ARExcel'
-        'ConvertFrom-ARSwagger'
-        'ConvertTo-ARCommand'
+		'ConvertFrom-ARSwagger'
+		'Export-ARCommand'
 	)
 	
 	# Private data to pass to the module specified in ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
@@ -54,13 +53,13 @@
 		PSData = @{
 			
 			# Tags applied to this module. These help with module discovery in online galleries.
-			# Tags = @()
+			Tags = @('rest', 'codegen')
 			
 			# A URL to the license for this module.
-			# LicenseUri = ''
+			LicenseUri = 'https://github.com/FriedrichWeinmann/AutoRest/blob/master/LICENSE'
 			
 			# A URL to the main website for this project.
-			# ProjectUri = ''
+			ProjectUri = 'https://github.com/FriedrichWeinmann/AutoRest'
 			
 			# A URL to an icon representing this module.
 			# IconUri = ''

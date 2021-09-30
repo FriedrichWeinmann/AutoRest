@@ -43,7 +43,7 @@
     ) {
         $this.SystemName = $Name
         $this.Name = $Name.Trim('$') | Split-String -Separator "\s" | ForEach-Object {
-            $_.SubString(0, 1).ToUpper() + $_.Substring(1)  
+            $_.SubString(0, 1).ToUpper() + $_.Substring(1)
         } | Join-String -Separator ""
     }
     CommandParameter(
@@ -55,7 +55,7 @@
     ) {
         $this.SystemName = $Name
         $this.Name = $Name.Trim('$') | Split-String -Separator "\s" | ForEach-Object {
-            $_.SubString(0, 1).ToUpper() + $_.Substring(1)  
+            $_.SubString(0, 1).ToUpper() + $_.Substring(1)
         } | Join-String -Separator ""
         $this.Help = $Help
         $this.ParameterType = $ParameterType
