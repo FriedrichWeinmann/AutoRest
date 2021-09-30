@@ -60,8 +60,10 @@ Describe "Verifying integrity of module files" {
 			$parseErrors = $null
 			$ast = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$parseErrors)
 			
-			It "[$name] Should have no syntax errors" -TestCases @{ parseErrors = $parseErrors } {
-				$parseErrors | Should -BeNullOrEmpty
+			if ($file.Name -notin $global:MayContainSyntaxErrors) {
+				It "[$name] Should have no syntax errors" -TestCases @{ parseErrors = $parseErrors } {
+					$parseErrors | Should -BeNullOrEmpty
+				}
 			}
 			
 			foreach ($command in $global:BannedCommands)

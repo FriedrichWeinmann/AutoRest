@@ -18,8 +18,10 @@ Describe "Testing localization strings" {
         It "Should be used & have text: $($stringEntry.String)" -TestCases @{ stringEntry = $stringEntry } {
             if ($exceptions.LegalSurplus -notcontains $stringEntry.String) {
                 $stringEntry.Surplus | Should -BeFalse
-            }
-            $stringEntry.Text | Should -Not -BeNullOrEmpty
+			}
+			if ($exceptions.ForeignSourced -notcontains $stringEntry.String) {
+				$stringEntry.Text | Should -Not -BeNullOrEmpty
+			}
         }
     }
 }

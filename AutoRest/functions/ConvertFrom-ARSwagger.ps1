@@ -31,10 +31,6 @@
 		"/api/users", "/api/machines", "/api/software", ...
 		In that case, it could make sense to remove the "/api/" part from all commands and just include it in the invokation command.
 	
-	.PARAMETER EnableException
-		This parameters disables user-friendly warnings and enables the throwing of exceptions.
-		This is less user friendly, but allows catching exceptions in calling scripts.
-	
 	.EXAMPLE
 		PS C:\> Get-ChildItem .\swaggerfiles | ConvertFrom-ARSwagger -Transformpath .\transform -OutPath .\module\functions -RestCommand Invoke-ARRestRequest -ModulePrefix Mg -PathPrefix '/api/' -GroupByEndpoint -Force
 	
@@ -63,10 +59,7 @@
         $ModulePrefix,
 
         [string]
-        $PathPrefix,
-
-        [switch]
-        $EnableException
+        $PathPrefix
     )
 
     begin {
@@ -88,8 +81,9 @@
             if ($Config.ContainsKey('ValueFromPipeline')) { $Parameter.ValueFromPipeline = $Config.ValueFromPipeline }
             if ($Config.ParameterSet) { $Parameter.ParameterSet = $Config.ParameterSet }
         }
-        
-        function New-Parameter {
+		
+		function New-Parameter {
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
             [CmdletBinding()]
             param (
                 [string]

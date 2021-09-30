@@ -35,3 +35,8 @@ $global:MayContainCommand = @{
 	"Write-Information" = @()
 	"Write-Debug" = @()
 }
+
+# List of Commands that may have syntax errors
+$global:MayContainSyntaxErrors = @(
+	'01-CommandParameter.ps1'
+)
