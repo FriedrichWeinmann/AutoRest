@@ -1,0 +1,22 @@
+﻿
+# ignore the settings folder and files for VSCode and PSS
+.vscode/*
+*.psproj
+*TempPoint*
+
+# Ignore staging info from Visual Studio
+library/AutoRest/.vs/*
+library/AutoRest/AutoRest/bin/*
+library/AutoRest/AutoRest/obj/*
+
+# ignore PowerShell Studio MetaData
+AutoRest/AutoRest.psproj
+AutoRest/AutoRest.psproj.bak
+AutoRest/AutoRest.psprojs
+AutoRest/AutoRest.psproj
+
+# ignore the TestResults
+TestResults/*
+
+# ignore the publishing Directory
+publish/*

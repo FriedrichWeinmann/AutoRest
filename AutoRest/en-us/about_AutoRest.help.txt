@@ -1,0 +1,11 @@
+﻿TOPIC
+	about_AutoRest
+	
+SHORT DESCRIPTION
+	Explains how to use the AutoRest powershell module
+	
+LONG DESCRIPTION
+	<Insert Content here>
+
+KEYWORDS
+	AutoRest
