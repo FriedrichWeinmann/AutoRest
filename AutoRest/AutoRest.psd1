@@ -27,7 +27,7 @@
 	# this module
 	RequiredModules = @(
 		@{ ModuleName = 'PSFramework'; ModuleVersion = '1.6.205' }
-		@{ ModuleName = 'ImportExcel'; ModuleVersion = '7.1.0' }
+#		@{ ModuleName = 'ImportExcel'; ModuleVersion = '7.1.0' }
 		@{ ModuleName = 'String'; ModuleVersion = '1.0.0' }
 	)
 	

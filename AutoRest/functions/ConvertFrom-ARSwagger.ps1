@@ -32,10 +32,9 @@
 		In that case, it could make sense to remove the "/api/" part from all commands and just include it in the invokation command.
 	
 	.EXAMPLE
-		PS C:\> Get-ChildItem .\swaggerfiles | ConvertFrom-ARSwagger -Transformpath .\transform -OutPath .\module\functions -RestCommand Invoke-ARRestRequest -ModulePrefix Mg -PathPrefix '/api/' -GroupByEndpoint -Force
+		PS C:\> Get-ChildItem .\swaggerfiles | ConvertFrom-ARSwagger -Transformpath .\transform -RestCommand Invoke-ARRestRequest -ModulePrefix Mg -PathPrefix '/api/'
 	
-		Picks up all items in the subfolder "swaggerfiles" and converts it to PowerShell commands in the "module\functions" subfolder.
-		Creates a subfolder per top-level endpoint, trims away the "/api/" starting portion of the relative endpoint url.
+		Picks up all items in the subfolder "swaggerfiles" and converts it to PowerShell command objects.
 		Applies all transforms in the subfolder transform.
 		Uses the "Invoke-ARRestRequest" command for all rest requests.
 	#>
