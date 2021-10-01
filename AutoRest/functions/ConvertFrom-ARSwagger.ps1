@@ -168,13 +168,16 @@
 	process {
 		#region Process Swagger file
 		foreach ($file in Resolve-PSFPath -Path $Path) {
-			$data = Get-Content -Path $file | ConvertFrom-Json
+			$data = ConvertFrom-Json -InputObject (Get-Content -Path $file -Raw)
 			foreach ($endpoint in $data.paths.PSObject.Properties | Sort-Object { $_.Name.Length }, Name) {
 				$endpointPath = ($endpoint.Name -replace "^$PathPrefix" -replace '/{[\w\s\d+-]+}$').Trim("/")
 				$effectiveEndpointPath = ($endpoint.Name -replace "^$PathPrefix" -replace '\s' ).Trim("/")
 				foreach ($method in $endpoint.Value.PSObject.Properties) {
 					$commandKey = $endpointPath, $method.Name -join ":"
-					Write-PSFMessage "Processing Command: $($commandKey)"
+					$commandOverrides = $overrides.$commandKey
+					if ($script:logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+						Write-PSFMessage "Processing Command: $($commandKey)"
+					}
 					#region Case: Existing Command
 					if ($commands[$commandKey]) {
 						$commandObject = $commands[$commandKey]
@@ -190,8 +193,9 @@
 									continue
 								}
 							}
-							
-							Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
+							if ($script:logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+								Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
+							}
 							switch ($parameter.in) {
 								#region Body
 								body {
@@ -289,7 +293,10 @@
 
 						foreach ($property in $commands[$commandKey].PSObject.Properties) {
 							if ($property.Name -eq 'Parameters') { continue }
-							if ($overrides.$commandKey.$($property.Name)) { $commandObject.$($property.Name) = $overrides.$commandKey.$($property.Name) }
+							$propertyOverride = $commandOverrides.($property.Name)
+							if ($propertyOverride) { 
+								$commandObject.$($property.Name) = $propertyOverride
+							}
 						}
 
 						#region Parameters
@@ -301,8 +308,10 @@
 									continue
 								}
 							}
-							
-							Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
+							if ($script:logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+								# This is on hot path. Checking if we should write the message in a cheap way.
+								Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
+							}
 							switch ($parameter.in) {
 								#region Body
 								body {
@@ -385,10 +394,12 @@
 					}
 					#endregion Case: New Command
 
-					Write-PSFMessage -Message "Finished processing $($endpointPath) : $($method.Name) --> $($commandObject.Name)" -Target $commandObject -Data @{
-						Overrides     = $overrides
-						CommandObject = $commandObject
-					} -Tag done
+					if ($script:logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+						Write-PSFMessage -Message "Finished processing $($endpointPath) : $($method.Name) --> $($commandObject.Name)" -Target $commandObject -Data @{
+							Overrides     = $overrides
+							CommandObject = $commandObject
+						} -Tag done
+					}
 				}
 			}
 		}

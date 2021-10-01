@@ -3,6 +3,7 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path "$($script:ModuleRoot)\
 
 # Detect whether at some level dotsourcing was enforced
 $script:doDotSource = Get-PSFConfigValue -FullName AutoRest.Import.DoDotSource -Fallback $false
+[PSFramework.Message.MessageLevel] $script:logLevel = Get-PSFConfigValue -FullName AutoRest.Logging.Level -Fallback "Warning"
 if ($AutoRest_dotsourcemodule) { $script:doDotSource = $true }
 
 <#
