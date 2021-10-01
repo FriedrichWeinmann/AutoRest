@@ -48,6 +48,9 @@
 		[switch]
 		$Force,
 		
+		[switch]
+		$NoHelp,
+		
 		[Parameter(Mandatory = $true, ValueFromPipeline = $true)]
 		[PSFramework.Utility.TypeTransformationAttribute([Command])]
 		[Command[]]
@@ -73,7 +76,8 @@
 				Write-PSFMessage -Message "Skipping $($commandObject.Name), as $filePath already exists." -Target $commandObject
 			}
 			Write-PSFMessage -Message "Writing $($commandObject.Name) to $filePath" -Target $commandObject
-			[System.IO.File]::WriteAllText($filePath, $commandObject.ToCommand(), $encoding)
+			try { [System.IO.File]::WriteAllText($filePath, $commandObject.ToCommand($NoHelp.ToBool()), $encoding) }
+			catch { Write-PSFMessage -Level Warning -Message $_ -ErrorRecord $_ -EnableException $true -PSCmdlet $PSCmdlet -Target $commandObject -Data @{ Path = $filePath } }
 		}
 	}
 }
