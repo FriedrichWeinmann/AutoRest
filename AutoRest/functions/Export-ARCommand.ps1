@@ -6,7 +6,7 @@
 	
 	.DESCRIPTION
 		Writes AutoRest Command objects to file as a function definition.
-	
+		
 		To generate AutoRest Command objects, use a parsing command such as ConvertFrom-ARSwagger.
 	
 	.PARAMETER Path
@@ -21,18 +21,21 @@
 		By default, this command will skip files of commands that were already created.
 		Setting the -Force parameter enforces those being overwritten, updating the command, but discarding any manual edits.
 	
+	.PARAMETER NoHelp
+		Export commands without generating help.
+	
 	.PARAMETER Command
 		The command object(s) to write to file.
 		Can be generated using the ConvertFrom-ARSwagger command.
 	
 	.EXAMPLE
 		PS C:\> $commands | Export-ARCommand
-	
+		
 		Exports all the commands specified to the current folder.
 	
 	.EXAMPLE
 		PS C:\> ConvertFrom-ARSwagger @param | Export-ARCommand -Path C:\Code\modules\MyApi\functions -GroupByEndpoint -Force
-	
+		
 		Takes the output of ConvertFrom-ARSwagger and writes it to the specified folder, creating a subfolder for each top-level api endpoint node.
 		Existing files will be overwritten.
 #>
