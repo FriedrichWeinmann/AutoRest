@@ -22,8 +22,11 @@
 
     {1}
 '@
-        $sets = @{ }
-        foreach ($parameter in $this.Parameters.Values) {
+		$sets = @{ }
+		foreach ($set in $this.ParameterSets.Keys) {
+			$sets[$set] = @()
+		}
+		foreach ($parameter in $this.Parameters.Values) {
             foreach ($set in $parameter.ParameterSet) {
                 if ($sets[$set]) { continue }
                 $sets[$set] = @()
@@ -111,8 +114,18 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
 
         return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString
     }
-
-    [string]ToCommand() {
+	
+	[string]ToCommand([bool]$NoHelp = $false) {
+		if ($NoHelp) {
+			return @"
+function $($this.Name) {
+$($this.ToParam())
+    process {
+$($this.ToProcess())
+    }
+}
+"@
+		}
         return @"
 function $($this.Name) {
 $($this.ToHelp())

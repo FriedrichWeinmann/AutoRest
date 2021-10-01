@@ -31,7 +31,9 @@
             $null = $sb.AppendLine(("        [Parameter({0}{1}ValueFromPipelineByPropertyName = `$true, ParameterSetName = '{2}')]" -f $mandatoryString, $pipelineString, $set))
         }
         if ($this.Alias) { $null = $sb.AppendLine("        [Alias($($this.Alias | Add-String "'" "'" | Join-String ','))]") }
-        $null = $sb.AppendLine("        [$($this.ParameterType)]")
+		$typeName = $this.ParameterType
+		if (-not $typeName) { $typeName = 'object' }
+        $null = $sb.AppendLine("        [$typeName]")
         $null = $sb.Append("        `$$($this.Name)")
         return $sb.ToString()
     }
@@ -54,7 +56,7 @@
         [ParameterType]$Type
     ) {
         $this.SystemName = $Name
-        $this.Name = $Name.Trim('$') | Split-String -Separator "\s" | ForEach-Object {
+        $this.Name = $Name.Trim('$') | Split-String -Separator "\s|-" | ForEach-Object {
             $_.SubString(0, 1).ToUpper() + $_.Substring(1)
         } | Join-String -Separator ""
         $this.Help = $Help
