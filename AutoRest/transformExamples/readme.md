@@ -263,13 +263,3 @@ E.g. if the following snippet would rename all Parameters `Page` to `PageNumber`
     }
 ```
 **This option should only be used with caution, as it can lead to inconsistent naming patterns.**
-
-
-
-<details>
-  <summary>Admin Whitelist</summary>
-
-  Content
-```Powershell
-```
-</details>
