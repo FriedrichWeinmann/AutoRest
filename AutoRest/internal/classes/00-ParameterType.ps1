@@ -2,4 +2,5 @@
     Body
     Path
     Query
+    Misc
 }

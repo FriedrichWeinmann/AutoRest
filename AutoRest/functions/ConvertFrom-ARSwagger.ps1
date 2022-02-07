@@ -96,8 +96,7 @@
 				[string]$ParameterName,
 				$Command
 			)
-			# Todo Level auf Verbose setzen
-			Write-PSFMessage -Level Host -Tag "AddParameter" -Message "Adding Parameter $ParameterName mit $($ParameterConfig|ConvertTo-json -Compress) to Command $($Command.Name)"
+			Write-PSFMessage -Level Verbose -Tag "AddParameter" -Message "Adding Parameter $ParameterName mit $($ParameterConfig|ConvertTo-json -Compress) to Command $($Command.Name)"
 			$additionalParameter = [CommandParameter]::new(
 				$ParameterName,
 				$ParameterConfig.Help,
@@ -110,18 +109,7 @@
 			if ($ParameterConfig.SystemName) { $additionalParameter.SystemName = $ParameterConfig.SystemName }
 			if ($ParameterConfig.ValueFromPipeline) { $additionalParameter.ValueFromPipeline = $ParameterConfig.ValueFromPipeline }
 
-			try {
-				# Todo Debugging Code entfernen
-				$Command.Parameters.add($ParameterName, $additionalParameter)
-				$global:cmd = $Command
-			}
-			catch {
-				write-host "Fehler $_"
-				$global:cmd = $Command
-				$global:addParam = $additionalParameter
-				Write-PSFMessage -level Host -Tag "AddParameter" -Message "Adding Parameter $($additionalParameter|ConvertTo-json -Compress) to Command $Command"
-
-			}
+			$Command.Parameters.add($ParameterName, $additionalParameter)
 		}
 
 		function New-Parameter {
@@ -419,25 +407,33 @@
 						#endregion Parameter Overrides
 
 						#region Parameter Additions
-						# foreach ($parameterName in $overrides.globalParameters.Keys) {
-						# 	if (-not $commandObject.Parameters[$parameterName]) { continue }
-
-						# 	Copy-ParameterConfig -Config $overrides.globalParameters[$parameterName] -Parameter $commandObject.Parameters[$parameterName]
-						# }
-						# foreach ($partialPath in $overrides.scopedParameters.Keys) {
-						# 	if ($effectiveEndpointPath -notlike $partialPath) { continue }
-						# 	foreach ($parameterPair in $overrides.scopedParameters.$($partialPath).GetEnumerator()) {
-						# 		if (-not $commandObject.Parameters[$parameterPair.Name]) { continue }
-
-						# 		Copy-ParameterConfig -Parameter $commandObject.Parameters[$parameterPair.Name] -Config $parameterPair.Value
-						# 	}
-						# }
-						foreach ($parameterName in $overrides.additionalParameters.$commandKey.Keys) {
+						foreach ($parameterName in $overrides.additionalGlobalParameters.Keys) {
 							if ($commandObject.Parameters[$parameterName]) {
-								Write-PSFMessage -Level Warning -Message "Invalid additiona parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
+								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
 								continue
 							}
-							write-host "`$parameterName=$parameterName"
+							Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $overrides.additionalGlobalParameters[$parameterName] -Command $commandObject
+						}
+						foreach ($partialPath in $overrides.additionalScopedParameters.Keys) {
+							if ($effectiveEndpointPath -notlike $partialPath) { continue }
+							# write-host "Checking $effectiveEndpointPath against ScopedPath `$partialPath=$partialPath"
+							foreach ($parameterPair in $overrides.additionalScopedParameters.$($partialPath).GetEnumerator()) {
+								$parameterName=$parameterPair.Name
+								if ($commandObject.Parameters[$parameterName]) {
+								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
+								continue
+							}
+
+								Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $parameterPair.value -Command $commandObject
+
+								# Copy-ParameterConfig -Parameter $commandObject.Parameters[$parameterPair.Name] -Config $parameterPair.Value
+							}
+						}
+						foreach ($parameterName in $overrides.additionalParameters.$commandKey.Keys) {
+							if ($commandObject.Parameters[$parameterName]) {
+								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
+								continue
+							}
 							Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $overrides.additionalParameters.$commandKey[$parameterName] -Command $commandObject
 						}
 						#endregion Parameter Additions
