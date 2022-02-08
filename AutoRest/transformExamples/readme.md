@@ -58,7 +58,7 @@ The following table describes the possible attributes of each parameter:
 | SystemName | Name of the parameter as expected by the API service, **should never be modified** |
 | Mandatory | `True` or `False` |
 | ValueFromPipeline | Should the parameter be accepted from the pipeline, possible Values `True` or `False`, default `False` |
-| Type | Type of the parameter; specifies where the parameter should be included in the API call, possible Values `Body`, `Path` and `Query` |
+| Type | Type of the parameter; specifies where the parameter should be included in the API call, possible Values `Body`, `Path`,`Query`, `Header` and `Misc` |
 
 ## Examples
 ### Override a specific command
@@ -263,3 +263,32 @@ E.g. if the following snippet would rename all Parameters `Page` to `PageNumber`
     }
 ```
 **This option should only be used with caution, as it can lead to inconsistent naming patterns.**
+
+## Adding additional parameters to the existing ones
+Sometimes it is necessary to add a functional parameter which is missing in the
+swagger documentation. In order to achieve this you can add the parameter
+configuration to one of the following keys:
+
+- `additionalParameters` followed by `<path>:<method>`
+- `additionalScopedParameters` followed by the endpoint-path-match
+- `additionalGlobalParameters` containing a global parameter which should be
+  added to every function
+
+Examples can be found within the file [Demo-ParameterAdd.psd1](Demo-ParameterAdd.psd1).
+
+### New Parameter Type 'Misc'
+If you need to add a parameter to the call of your RestCommand you can specify it with the ParameterType `Misc`. For example
+```Powershell
+"additionalGlobalParameters" = @{
+    "Connection" = @{
+        "Help"          = "Will not be given"
+        "ParameterType" = "object"
+        "Mandatory"     = $true
+        "Type"          = "Misc"
+    }
+}
+```
+will result in the addition of `-Connection $Connection`
+```Powershell
+Invoke-ARRestRequest  -Path $__path -Method head -Body $__body -Query $__query -Header $__header -Connection $Connection
+```
