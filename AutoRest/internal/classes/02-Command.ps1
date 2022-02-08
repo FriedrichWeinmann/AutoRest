@@ -15,6 +15,8 @@
     [string]$RestCommand
     [string]$ProcessorCommand
 
+    [string]$ConvertToHashtableCommand
+
     [string]ToExample() {
         $format = @'
 .EXAMPLE
@@ -87,8 +89,8 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
         $__mapping = @{{
 {9}
         }}
-        $__body = $PSBoundParameters | ConvertTo-HashTable -Include {0} -Mapping $__mapping
-        $__query = $PSBoundParameters | ConvertTo-HashTable -Include {1} -Mapping $__mapping
+        $__body = $PSBoundParameters | {11} -Include {0} -Mapping $__mapping
+        $__query = $PSBoundParameters | {11} -Include {1} -Mapping $__mapping
         $__path = '{2}'{3}
         {4} -Path $__path -Method {5} -Body $__body -Query $__query{10}{6}{7}{8}
 '@
@@ -113,7 +115,7 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
         $mappingString = $this.Parameters.Values | Where-Object Type -NE Path | Format-String -Format "            '{0}' = '{1}'" -Property Name, SystemName | Join-String "`n"
         $miscParameterString = $this.Parameters.Values | Where-Object Type -eq Misc | Format-String -Format ' -{0} ${1}' -Property SystemName, Name | Join-String " "
 
-        return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString, $miscParameterString
+        return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString, $miscParameterString, $this.ConvertToHashtableCommand
     }
 
 	[string]ToCommand([bool]$NoHelp = $false) {
