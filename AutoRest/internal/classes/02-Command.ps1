@@ -91,11 +91,13 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
         }}
         $__body = $PSBoundParameters | {11} -Include {0} -Mapping $__mapping
         $__query = $PSBoundParameters | {11} -Include {1} -Mapping $__mapping
+        $__header = $PSBoundParameters | {11} -Include {12} -Mapping $__mapping
         $__path = '{2}'{3}
-        {4} -Path $__path -Method {5} -Body $__body -Query $__query{10}{6}{7}{8}
+        {4} -Path $__path -Method {5} -Body $__body -Query $__query -Header $__header{10}{6}{7}{8}
 '@
         $bodyString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Body).Name | Add-String "'" "'" | Join-String ",")
         $queryString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Query).Name | Add-String "'" "'" | Join-String ",")
+        $headerString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Header).Name | Add-String "'" "'" | Join-String ",")
         [string]$pathReplacement = $this.Parameters.Values | Where-Object {
             $_.Type -eq 'Path' -and
             $this.EndpointUrl -like "*{$($_.SystemName)}*"
@@ -115,7 +117,7 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
         $mappingString = $this.Parameters.Values | Where-Object Type -NE Path | Format-String -Format "            '{0}' = '{1}'" -Property Name, SystemName | Join-String "`n"
         $miscParameterString = $this.Parameters.Values | Where-Object Type -eq Misc | Format-String -Format ' -{0} ${1}' -Property SystemName, Name | Join-String " "
 
-        return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString, $miscParameterString, $this.ConvertToHashtableCommand
+        return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString, $miscParameterString, $this.ConvertToHashtableCommand,$headerString
     }
 
 	[string]ToCommand([bool]$NoHelp = $false) {

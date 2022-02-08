@@ -1,4 +1,4 @@
-function ConvertFrom-ARSwagger {
+﻿function ConvertFrom-ARSwagger {
 	<#
 	.SYNOPSIS
 		Parse a swagger file and generate commands from it.
@@ -292,6 +292,35 @@ function ConvertFrom-ARSwagger {
 									$commandObject.Parameters[$parameter.name].ParameterSet = @($parameterSetName)
 								}
 								#endregion Query
+
+								#region Header
+								header {
+									if ($commandObject.Parameters[$parameter.name]) {
+										$commandObject.Parameters[$parameter.name].ParameterSet += @($parameterSetName)
+										continue
+									}
+									$parameterType = $parameter.type
+									if (-not $parameterType -and $parameter.schema.type) {
+										$parameterType = $parameter.schema.type
+										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
+											$parameterType = '{0}[]' -f $parameter.schema.items.type
+										}
+									}
+									$parameterParam = @{
+										Name            = $parameter.Name
+										Help            = $parameter.Description
+										ParameterType   = $parameterType
+										ParameterFormat = $parameter.format
+										Mandatory       = $parameter.required -as [bool]
+										Type            = 'header'
+									}
+									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
+									$commandObject.Parameters[$parameter.name].ParameterSet = @($parameterSetName)
+								}
+								#endregion Header
+								Default {
+									Write-PSFMessage -Level Warning -Message "Unknown Parameter Type $($parameter.in)"
+								}
 							}
 						}
 						#endregion Parameters
@@ -314,6 +343,7 @@ function ConvertFrom-ARSwagger {
 							ParameterSets             = @{
 								'default' = $method.Value.description
 							}
+							ConvertToHashtableCommand = $ConvertToHashtableCommand
 						}
 						if ($ServiceName) { $commandObject.ServiceName = $ServiceName }
 						$commands[$commandKey] = $commandObject
@@ -386,6 +416,32 @@ function ConvertFrom-ARSwagger {
 									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
 								}
 								#endregion Query
+
+								#region Header
+								header {
+									$parameterType = $parameter.type
+									if (-not $parameterType -and $parameter.schema.type) {
+										$parameterType = $parameter.schema.type
+										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
+											$parameterType = '{0}[]' -f $parameter.schema.items.type
+										}
+									}
+
+									$parameterParam = @{
+										Name            = $parameter.Name
+										Help            = $parameter.Description
+										ParameterType   = $parameterType
+										ParameterFormat = $parameter.format
+										Mandatory       = $parameter.required -as [bool]
+										Type            = 'Header'
+									}
+									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
+								}
+								#endregion Header
+								Default {
+									Write-PSFMessage -Level Warning -Message "Unknown Parameter Type $($parameter.in)"
+								}
+
 							}
 						}
 						#endregion Parameters
@@ -428,9 +484,9 @@ function ConvertFrom-ARSwagger {
 							foreach ($parameterPair in $overrides.additionalScopedParameters.$($partialPath).GetEnumerator()) {
 								$parameterName = $parameterPair.Name
 								if ($commandObject.Parameters[$parameterName]) {
-								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
-								continue
-							}
+									Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
+									continue
+								}
 
 								Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $parameterPair.value -Command $commandObject
 
