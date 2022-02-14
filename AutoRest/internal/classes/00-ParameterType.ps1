@@ -2,4 +2,6 @@
     Body
     Path
     Query
+    Header
+    Misc
 }
