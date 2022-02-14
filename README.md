@@ -39,6 +39,8 @@ $paramConvertFromARSwagger = @{
 Get-ChildItem .\swaggerfiles | ConvertFrom-ARSwagger @paramConvertFromARSwagger | Export-ARCommand -Path .
 ```
 
+> [More Information on Customizing the result using Transforms](https://github.com/FriedrichWeinmann/AutoRest/tree/master/AutoRest/transformExamples)
+
 ## Authentication & Invocation
 
 The commands generated from this module assume the actual authentication and request execution is provided externally.
