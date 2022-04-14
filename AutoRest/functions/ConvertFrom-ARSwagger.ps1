@@ -153,6 +153,7 @@
 		}
 		
 		function Read-Parameters {
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
 			[CmdletBinding()]
 			param (
 				[Command]
@@ -289,6 +290,7 @@
 		
 		function Set-ParameterOverrides {
 			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
 			[CmdletBinding()]
 			param (
 				[hashtable]
@@ -326,6 +328,7 @@
 		
 		function Set-CommandOverrides {
 			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
 			[CmdletBinding()]
 			param (
 				[hashtable]
