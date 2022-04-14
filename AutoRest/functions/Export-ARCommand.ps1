@@ -1,6 +1,5 @@
-﻿function Export-ARCommand
-{
-<#
+﻿function Export-ARCommand {
+	<#
 	.SYNOPSIS
 		Writes AutoRest Command objects to file as a function definition.
 	
@@ -60,25 +59,34 @@
 		$Command
 	)
 	
-	begin
-	{
+	begin {
 		$encoding = [System.Text.UTF8Encoding]::new($true)
+		$targetFolder = Resolve-PSFPath $Path
+		[PSFramework.Message.MessageLevel]$logLevel = Get-PSFConfigValue -FullName AutoRest.Logging.Level -Fallback "Warning"
 	}
-	process
-	{
+	process {
 		foreach ($commandObject in $Command) {
-			$targetFolder = Resolve-PSFPath $Path
-			if ($GroupByEndpoint) {
-				$targetFolder = Join-Path -Path (Resolve-PSFPath $Path) -ChildPath ($commandObject.EndpointUrl -split "/" | Select-Object -First 1)
+			$folder = if ($GroupByEndpoint) {
+				Join-Path -Path (Resolve-PSFPath $Path) -ChildPath ($commandObject.EndpointUrl -split "/" | Select-Object -First 1)
 			}
-			if (-not (Test-Path -Path $targetFolder)) {
-				$null = New-Item -Path $targetFolder -ItemType Directory -Force
+			else {
+				$targetFolder
 			}
-			$filePath = Join-Path -Path $targetFolder -ChildPath "$($commandObject.Name).ps1"
+			
+			if (-not ([System.IO.Directory]::Exists($folder))) {
+				$null = New-Item -Path $folder -ItemType Directory -Force
+			}
+			
+			$filePath = Join-Path -Path $folder -ChildPath "$($commandObject.Name).ps1"
 			if (-not $Force -and (Test-Path -Path $filePath)) {
-				Write-PSFMessage -Message "Skipping $($commandObject.Name), as $filePath already exists." -Target $commandObject
+				if ($logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+					Write-PSFMessage -Message "Skipping $($commandObject.Name), as $filePath already exists." -Target $commandObject
+				}
+				continue
 			}
-			Write-PSFMessage -Message "Writing $($commandObject.Name) to $filePath" -Target $commandObject
+			if ($logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+				Write-PSFMessage -Message "Writing $($commandObject.Name) to $filePath" -Target $commandObject
+			}
 			try { [System.IO.File]::WriteAllText($filePath, $commandObject.ToCommand($NoHelp.ToBool()), $encoding) }
 			catch { Write-PSFMessage -Level Warning -Message $_ -ErrorRecord $_ -EnableException $true -PSCmdlet $PSCmdlet -Target $commandObject -Data @{ Path = $filePath } }
 		}
