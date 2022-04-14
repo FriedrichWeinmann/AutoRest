@@ -95,29 +95,6 @@
 			if ($Config.ContainsKey('ValueFromPipeline')) { $Parameter.ValueFromPipeline = $Config.ValueFromPipeline }
 			if ($Config.ParameterSet) { $Parameter.ParameterSet = $Config.ParameterSet }
 		}
-		function Add-ParameterConfig {
-			[CmdletBinding()]
-			param (
-				[Hashtable]
-				$ParameterConfig,
-				[string]$ParameterName,
-				$Command
-			)
-			Write-PSFMessage -Level Verbose -Tag "AddParameter" -Message "Adding Parameter $ParameterName mit $($ParameterConfig|ConvertTo-json -Compress) to Command $($Command.Name)"
-			$additionalParameter = [CommandParameter]::new(
-				$ParameterName,
-				$ParameterConfig.Help,
-				$ParameterConfig.ParameterType,
-				$ParameterConfig.Mandatory,
-				[ParameterType]$ParameterConfig.Type
-			)
-			if ($ParameterConfig.ParameterSet) { $additionalParameter.ParameterSet = $ParameterConfig.ParameterSet }
-			if ($ParameterConfig.Weight) { $additionalParameter.Weight = $ParameterConfig.Weight }
-			if ($ParameterConfig.SystemName) { $additionalParameter.SystemName = $ParameterConfig.SystemName }
-			if ($ParameterConfig.ValueFromPipeline) { $additionalParameter.ValueFromPipeline = $ParameterConfig.ValueFromPipeline }
-
-			$Command.Parameters.add($ParameterName, $additionalParameter)
-		}
 
 		function New-Parameter {
 			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
@@ -174,6 +151,213 @@
 			}
 			$paramValue
 		}
+		
+		function Read-Parameters {
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
+			[CmdletBinding()]
+			param (
+				[Command]
+				$CommandObject,
+				
+				$Parameters,
+				
+				$SwaggerObject,
+				
+				[PSFramework.Message.MessageLevel]
+				$LogLevel,
+				
+				[string]
+				$ParameterSet
+			)
+			
+			foreach ($parameter in $Parameters) {
+				if ($parameter.'$ref') {
+					$parameter = Resolve-ParameterReference -Ref $parameter.'$ref' -SwaggerObject $SwaggerObject
+					if (-not $parameter) {
+						Write-PSFMessage -Level Warning -Message "  Unable to resolve referenced parameter $($parameter.'$ref')"
+						continue
+					}
+				}
+				if ($LogLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+					# This is on hot path. Checking if we should write the message in a cheap way.
+					Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
+				}
+				switch ($parameter.in) {
+					#region Body
+					body {
+						foreach ($property in $parameter.schema.properties.PSObject.Properties) {
+							if ($ParameterSet -and $CommandObject.Parameters[$property.Value.title]) {
+								$CommandObject.Parameters[$property.Value.title].ParameterSet += @($ParameterSet)
+								continue
+							}
+							
+							$parameterParam = @{
+								Name            = $property.Value.title
+								Help            = $property.Value.description
+								ParameterType   = $property.Value.type
+								ParameterFormat = $property.Value.format
+								Mandatory       = $parameter.schema.required -contains $property.Value.title
+								Type            = 'Body'
+							}
+							$CommandObject.Parameters[$property.Value.title] = New-Parameter @parameterParam
+							if ($ParameterSet) {
+								$commandObject.Parameters[$property.Value.title].ParameterSet = @($ParameterSet)
+							}
+						}
+					}
+					#endregion Body
+					
+					#region Path
+					path {
+						if ($ParameterSet -and $CommandObject.Parameters[($parameter.name -replace '\s')]) {
+							$CommandObject.Parameters[($parameter.name -replace '\s')].ParameterSet += @($ParameterSet)
+							continue
+						}
+						
+						$parameterParam = @{
+							Name            = $parameter.Name -replace '\s'
+							Help            = $parameter.Description
+							ParameterType   = 'string'
+							ParameterFormat = $parameter.format
+							Mandatory       = $parameter.required -as [bool]
+							Type            = 'Path'
+						}
+						$CommandObject.Parameters[($parameter.name -replace '\s')] = New-Parameter @parameterParam
+						if ($ParameterSet) {
+							$CommandObject.Parameters[($parameter.name -replace '\s')].ParameterSet = @($ParameterSet)
+						}
+					}
+					#endregion Path
+					
+					#region Query
+					query {
+						if ($CommandObject.Parameters[$parameter.name]) {
+							$CommandObject.Parameters[$parameter.name].ParameterSet += @($parameterSetName)
+							continue
+						}
+						
+						$parameterType = $parameter.type
+						if (-not $parameterType -and $parameter.schema.type) {
+							$parameterType = $parameter.schema.type
+							if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
+								$parameterType = '{0}[]' -f $parameter.schema.items.type
+							}
+						}
+						
+						$parameterParam = @{
+							Name            = $parameter.Name
+							Help            = $parameter.Description
+							ParameterType   = $parameterType
+							ParameterFormat = $parameter.format
+							Mandatory       = $parameter.required -as [bool]
+							Type            = 'Query'
+						}
+						$CommandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
+						if ($ParameterSet) {
+							$CommandObject.Parameters[$parameter.name].ParameterSet = @($ParameterSet)
+						}
+					}
+					#endregion Query
+				
+					#region Header
+					header {
+						if ($commandObject.Parameters[$parameter.name]) {
+							$commandObject.Parameters[$parameter.name].ParameterSet += @($parameterSetName)
+							continue
+						}
+						$parameterType = $parameter.type
+						if (-not $parameterType -and $parameter.schema.type) {
+							$parameterType = $parameter.schema.type
+							if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
+								$parameterType = '{0}[]' -f $parameter.schema.items.type
+							}
+						}
+						$parameterParam = @{
+							Name            = $parameter.Name
+							Help            = $parameter.Description
+							ParameterType   = $parameterType
+							ParameterFormat = $parameter.format
+							Mandatory       = $parameter.required -as [bool]
+							Type            = 'header'
+						}
+						$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
+						$commandObject.Parameters[$parameter.name].ParameterSet = @($parameterSetName)
+					}
+					#endregion Header
+				}
+			}
+		}
+		
+		function Set-ParameterOverrides {
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
+			[CmdletBinding()]
+			param (
+				[hashtable]
+				$Overrides,
+				
+				[Command]
+				$CommandObject,
+				
+				[string]
+				$CommandKey
+			)
+			
+			foreach ($parameterName in $Overrides.globalParameters.Keys) {
+				if (-not $CommandObject.Parameters[$parameterName]) { continue }
+				
+				Copy-ParameterConfig -Config $Overrides.globalParameters[$parameterName] -Parameter $CommandObject.Parameters[$parameterName]
+			}
+			foreach ($partialPath in $Overrides.scopedParameters.Keys) {
+				if ($CommandObject.EndpointUrl -notlike $partialPath) { continue }
+				foreach ($parameterPair in $Overrides.scopedParameters.$($partialPath).GetEnumerator()) {
+					if (-not $CommandObject.Parameters[$parameterPair.Name]) { continue }
+					
+					Copy-ParameterConfig -Parameter $CommandObject.Parameters[$parameterPair.Name] -Config $parameterPair.Value
+				}
+			}
+			foreach ($parameterName in $Overrides.$CommandKey.Parameters.Keys) {
+				if (-not $CommandObject.Parameters[$parameterName]) {
+					Write-PSFMessage -Level Warning -Message "Invalid override parameter: $parameterName - unable to find parameter on $($CommandObject.Name)" -Target $commandObject
+					continue
+				}
+				
+				Copy-ParameterConfig -Config $Overrides.$CommandKey.Parameters[$parameterName] -Parameter $CommandObject.Parameters[$parameterName]
+			}
+		}
+		
+		function Set-CommandOverrides {
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions", "")]
+			[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '')]
+			[CmdletBinding()]
+			param (
+				[hashtable]
+				$Overrides,
+				
+				[Command]
+				$CommandObject,
+				
+				[string]
+				$CommandKey
+			)
+			
+			$commandOverrides = $Overrides.$CommandKey
+			
+			# Apply Overrides
+			foreach ($property in $CommandObject.PSObject.Properties) {
+				if ($property.Name -eq 'Parameters') { continue }
+				if ($property.Name -eq 'ParameterSets') {
+					foreach ($key in $commandOverrides.ParameterSets.Keys) {
+						$CommandObject.ParameterSets[$key] = $commandOverrides.ParameterSets.$key
+					}
+					continue
+				}
+				$propertyOverride = $commandOverrides.($property.Name)
+				if ($propertyOverride) {
+					$property.Value = $propertyOverride
+				}
+			}
+		}
 		#endregion Functions
 
 		$commands = @{ }
@@ -195,6 +379,8 @@
 			delete = "Remove"
 			head   = "Invoke"
 		}
+
+		[PSFramework.Message.MessageLevel]$logLevel = Get-PSFConfigValue -FullName AutoRest.Logging.Level -Fallback "Warning"
 	}
 	process {
 		#region Process Swagger file
@@ -205,125 +391,16 @@
 				$effectiveEndpointPath = ($endpoint.Name -replace "^$PathPrefix" -replace '\s' ).Trim("/")
 				foreach ($method in $endpoint.Value.PSObject.Properties) {
 					$commandKey = $endpointPath, $method.Name -join ":"
-					Write-PSFMessage "Processing Command: $($commandKey)"
+					if ($logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+						Write-PSFMessage "Processing Command: $($commandKey)"
+					}
 					#region Case: Existing Command
 					if ($commands[$commandKey]) {
 						$commandObject = $commands[$commandKey]
 						$parameterSetName = $method.Value.operationId
 						$commandObject.ParameterSets[$parameterSetName] = $method.Value.description
 
-						#region Parameters
-						foreach ($parameter in $method.Value.parameters) {
-							if ($parameter.'$ref') {
-								$parameter = Resolve-ParameterReference -Ref $parameter.'$ref' -SwaggerObject $data
-								if (-not $parameter) {
-									Write-PSFMessage -Level Warning -Message "  Unable to resolve referenced parameter $($parameter.'$ref')"
-									continue
-								}
-							}
-
-							Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
-							switch ($parameter.in) {
-								#region Body
-								body {
-									foreach ($property in $parameter.schema.properties.PSObject.Properties) {
-										if ($commandObject.Parameters[$property.Value.title]) {
-											$commandObject.Parameters[$property.Value.title].ParameterSet += @($parameterSetName)
-											continue
-										}
-
-										$parameterParam = @{
-											Name            = $property.Value.title
-											Help            = $property.Value.description
-											ParameterType   = $property.Value.type
-											ParameterFormat = $property.Value.format
-											Mandatory       = $parameter.schema.required -contains $property.Value.title
-											Type            = 'Body'
-										}
-										$commandObject.Parameters[$property.Value.title] = New-Parameter @parameterParam
-										$commandObject.Parameters[$property.Value.title].ParameterSet = @($parameterSetName)
-									}
-								}
-								#endregion Body
-
-								#region Path
-								path {
-									if ($commandObject.Parameters[($parameter.name -replace '\s')]) {
-										$commandObject.Parameters[($parameter.name -replace '\s')].ParameterSet += @($parameterSetName)
-										continue
-									}
-
-									$parameterParam = @{
-										Name            = $parameter.Name -replace '\s'
-										Help            = $parameter.Description
-										ParameterType   = 'string'
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'Path'
-									}
-									$commandObject.Parameters[($parameter.name -replace '\s')] = New-Parameter @parameterParam
-									$commandObject.Parameters[($parameter.name -replace '\s')].ParameterSet = @($parameterSetName)
-								}
-								#endregion Path
-
-								#region Query
-								query {
-									if ($commandObject.Parameters[$parameter.name]) {
-										$commandObject.Parameters[$parameter.name].ParameterSet += @($parameterSetName)
-										continue
-									}
-
-									$parameterType = $parameter.type
-									if (-not $parameterType -and $parameter.schema.type) {
-										$parameterType = $parameter.schema.type
-										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
-											$parameterType = '{0}[]' -f $parameter.schema.items.type
-										}
-									}
-									$parameterParam = @{
-										Name            = $parameter.Name
-										Help            = $parameter.Description
-										ParameterType   = $parameterType
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'Query'
-									}
-									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
-									$commandObject.Parameters[$parameter.name].ParameterSet = @($parameterSetName)
-								}
-								#endregion Query
-
-								#region Header
-								header {
-									if ($commandObject.Parameters[$parameter.name]) {
-										$commandObject.Parameters[$parameter.name].ParameterSet += @($parameterSetName)
-										continue
-									}
-									$parameterType = $parameter.type
-									if (-not $parameterType -and $parameter.schema.type) {
-										$parameterType = $parameter.schema.type
-										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
-											$parameterType = '{0}[]' -f $parameter.schema.items.type
-										}
-									}
-									$parameterParam = @{
-										Name            = $parameter.Name
-										Help            = $parameter.Description
-										ParameterType   = $parameterType
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'header'
-									}
-									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
-									$commandObject.Parameters[$parameter.name].ParameterSet = @($parameterSetName)
-								}
-								#endregion Header
-								Default {
-									Write-PSFMessage -Level Warning -Message "Unknown Parameter Type $($parameter.in)"
-								}
-							}
-						}
-						#endregion Parameters
+						Read-Parameters -CommandObject $commandObject -Parameters $method.Value.parameters -SwaggerObject $data -LogLevel $logLevel -ParameterSet $parameterSetName
 					}
 					#endregion Case: Existing Command
 
@@ -353,167 +430,27 @@
 							if ($overrides.$commandKey.$($property.Name)) { $commandObject.$($property.Name) = $overrides.$commandKey.$($property.Name) }
 						}
 
-						#region Parameters
-						foreach ($parameter in $method.Value.parameters) {
-							if ($parameter.'$ref') {
-								$parameter = Resolve-ParameterReference -Ref $parameter.'$ref' -SwaggerObject $data
-								if (-not $parameter) {
-									Write-PSFMessage -Level Warning -Message "  Unable to resolve referenced parameter $($parameter.'$ref')"
-									continue
-								}
-							}
-
-							Write-PSFMessage "  Processing Parameter: $($parameter.Name) ($($parameter.in))"
-							switch ($parameter.in) {
-								#region Body
-								body {
-									foreach ($property in $parameter.schema.properties.PSObject.Properties) {
-										$parameterParam = @{
-											Name            = $property.Value.title
-											Help            = $property.Value.description
-											ParameterType   = $property.Value.type
-											ParameterFormat = $property.Value.format
-											Mandatory       = $parameter.schema.required -contains $property.Value.title
-											Type            = 'Body'
-										}
-										$commandObject.Parameters[$property.Value.title] = New-Parameter @parameterParam
-									}
-								}
-								#endregion Body
-
-								#region Path
-								path {
-									$parameterParam = @{
-										Name            = $parameter.Name -replace '\s'
-										Help            = $parameter.Description
-										ParameterType   = 'string'
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'Path'
-									}
-									$commandObject.Parameters[($parameter.name -replace '\s')] = New-Parameter @parameterParam
-								}
-								#endregion Path
-
-								#region Query
-								query {
-									$parameterType = $parameter.type
-									if (-not $parameterType -and $parameter.schema.type) {
-										$parameterType = $parameter.schema.type
-										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
-											$parameterType = '{0}[]' -f $parameter.schema.items.type
-										}
-									}
-
-									$parameterParam = @{
-										Name            = $parameter.Name
-										Help            = $parameter.Description
-										ParameterType   = $parameterType
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'Query'
-									}
-									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
-								}
-								#endregion Query
-
-								#region Header
-								header {
-									$parameterType = $parameter.type
-									if (-not $parameterType -and $parameter.schema.type) {
-										$parameterType = $parameter.schema.type
-										if ($parameter.schema.type -eq "array" -and $parameter.schema.items.type) {
-											$parameterType = '{0}[]' -f $parameter.schema.items.type
-										}
-									}
-
-									$parameterParam = @{
-										Name            = $parameter.Name
-										Help            = $parameter.Description
-										ParameterType   = $parameterType
-										ParameterFormat = $parameter.format
-										Mandatory       = $parameter.required -as [bool]
-										Type            = 'Header'
-									}
-									$commandObject.Parameters[$parameter.name] = New-Parameter @parameterParam
-								}
-								#endregion Header
-								Default {
-									Write-PSFMessage -Level Warning -Message "Unknown Parameter Type $($parameter.in)"
-								}
-
-							}
-						}
-						#endregion Parameters
-
-						#region Parameter Overrides
-						foreach ($parameterName in $overrides.globalParameters.Keys) {
-							if (-not $commandObject.Parameters[$parameterName]) { continue }
-
-							Copy-ParameterConfig -Config $overrides.globalParameters[$parameterName] -Parameter $commandObject.Parameters[$parameterName]
-						}
-						foreach ($partialPath in $overrides.scopedParameters.Keys) {
-							if ($effectiveEndpointPath -notlike $partialPath) { continue }
-							foreach ($parameterPair in $overrides.scopedParameters.$($partialPath).GetEnumerator()) {
-								if (-not $commandObject.Parameters[$parameterPair.Name]) { continue }
-
-								Copy-ParameterConfig -Parameter $commandObject.Parameters[$parameterPair.Name] -Config $parameterPair.Value
-							}
-						}
-						foreach ($parameterName in $overrides.$commandKey.Parameters.Keys) {
-							if (-not $commandObject.Parameters[$parameterName]) {
-								Write-PSFMessage -Level Warning -Message "Invalid override parameter: $parameterName - unable to find parameter on $($commandObject.Name)" -Target $commandObject
-								continue
-							}
-
-							Copy-ParameterConfig -Config $overrides.$commandKey.Parameters[$parameterName] -Parameter $commandObject.Parameters[$parameterName]
-						}
-						#endregion Parameter Overrides
-
-						#region Parameter Additions
-						foreach ($parameterName in $overrides.additionalGlobalParameters.Keys) {
-							if ($commandObject.Parameters[$parameterName]) {
-								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
-								continue
-							}
-							Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $overrides.additionalGlobalParameters[$parameterName] -Command $commandObject
-						}
-						foreach ($partialPath in $overrides.additionalScopedParameters.Keys) {
-							if ($effectiveEndpointPath -notlike $partialPath) { continue }
-							# write-host "Checking $effectiveEndpointPath against ScopedPath `$partialPath=$partialPath"
-							foreach ($parameterPair in $overrides.additionalScopedParameters.$($partialPath).GetEnumerator()) {
-								$parameterName = $parameterPair.Name
-								if ($commandObject.Parameters[$parameterName]) {
-									Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
-									continue
-								}
-
-								Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $parameterPair.value -Command $commandObject
-
-								# Copy-ParameterConfig -Parameter $commandObject.Parameters[$parameterPair.Name] -Config $parameterPair.Value
-							}
-						}
-						foreach ($parameterName in $overrides.additionalParameters.$commandKey.Keys) {
-							if ($commandObject.Parameters[$parameterName]) {
-								Write-PSFMessage -Level Warning -Message "Invalid additional parameter: $parameterName - already exists on $($commandObject.Name)" -Target $commandObject
-								continue
-							}
-							Add-ParameterConfig -ParameterName $parameterName -ParameterConfig $overrides.additionalParameters.$commandKey[$parameterName] -Command $commandObject
-						}
-						#endregion Parameter Additions
+						# Parameters
+						Read-Parameters -CommandObject $commandObject -Parameters $method.Value.parameters -SwaggerObject $data -LogLevel $logLevel
 					}
 					#endregion Case: New Command
 
-					Write-PSFMessage -Message "Finished processing $($endpointPath) : $($method.Name) --> $($commandObject.Name)" -Target $commandObject -Data @{
-						Overrides     = $overrides
-						CommandObject = $commandObject
-					} -Tag done
+					if ($logLevel -le [PSFramework.Message.MessageLevel]::Verbose) {
+						Write-PSFMessage -Message "Finished processing $($endpointPath) : $($method.Name) --> $($commandObject.Name)" -Target $commandObject -Data @{
+							Overrides     = $overrides
+							CommandObject = $commandObject
+						} -Tag done
+					}
 				}
 			}
 		}
 		#endregion Process Swagger file
 	}
 	end {
+		foreach ($pair in $commands.GetEnumerator()) {
+			Set-ParameterOverrides -Overrides $overrides -CommandObject $pair.Value -CommandKey $pair.Key
+			Set-CommandOverrides -Overrides $overrides -CommandObject $pair.Value -CommandKey $pair.Key
+		}
 		$commands.Values
 	}
 }

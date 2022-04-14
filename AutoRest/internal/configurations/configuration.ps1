@@ -16,3 +16,4 @@ Set-PSFConfig -Module 'AutoRest' -Name 'Import.IndividualFiles' -Value $false -I
 
 Set-PSFConfig -Module 'AutoRest' -Name 'Author' -Value $env:USERNAME -Initialize -Validation string -Description 'The user running this module. Will be added to output metadata.'
 Set-PSFConfig -Module 'AutoRest' -Name 'Company' -Value 'Contoso ltd.' -Initialize -Validation string -Description 'The company owning the output. Will be added to output metadata.'
+Set-PSFConfig -Module 'AutoRest' -Name 'Logging.Level' -Value 'Warning' -Initialize -Validation string -Description 'The maximum level of logging when generating commands from swagger file. Corresponds to PSFramework message levels. Set this to "Critical" to have all actions logged. Enabling this logging costs performance when parsing swagger files, but helps with debugging.'

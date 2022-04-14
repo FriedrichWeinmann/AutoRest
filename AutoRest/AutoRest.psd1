@@ -3,7 +3,7 @@
 	RootModule = 'AutoRest.psm1'
 
 	# Version number of this module.
-	ModuleVersion = '0.2.0'
+	ModuleVersion = '1.0.0'
 
 	# ID used to uniquely identify this module
 	GUID = '18c33632-995c-4b5e-82fb-c52c2f6a176f'
@@ -26,7 +26,7 @@
 	# Modules that must be imported into the global environment prior to importing
 	# this module
 	RequiredModules = @(
-		@{ ModuleName = 'PSFramework'; ModuleVersion = '1.6.205' }
+		@{ ModuleName = 'PSFramework'; ModuleVersion = '1.6.214' }
 #		@{ ModuleName = 'ImportExcel'; ModuleVersion = '7.1.0' }
 		@{ ModuleName = 'String'; ModuleVersion = '1.0.0' }
 	)
