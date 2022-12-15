@@ -18,6 +18,7 @@
 	[string]$ShouldProcess
 	[string]$ShouldProcessTarget
 	[string[]]$PssaRulesIgnored
+	[bool]$PassThruActions
 
     [string]$ConvertToHashtableCommand
 
@@ -113,36 +114,25 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
     }
 
     [string]ToProcess() {
-        $format = @'
-        $__mapping = @{{
-{9}
-        }}
-        $__body = $PSBoundParameters | {11} -Include {0} -Mapping $__mapping
-        $__query = $PSBoundParameters | {11} -Include {1} -Mapping $__mapping
-        $__header = $PSBoundParameters | {11} -Include {12} -Mapping $__mapping
-        $__path = '{2}'{3}
-{13}
-        {4} -Path $__path -Method {5} -Body $__body -Query $__query -Header $__header{10}{6}{7}{8}
-'@
         $bodyString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Body).Name | Add-String "'" "'" | Join-String ",")
         $queryString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Query).Name | Add-String "'" "'" | Join-String ",")
         $headerString = '@({0})' -f (($this.Parameters.Values | Where-Object Type -EQ Header).Name | Add-String "'" "'" | Join-String ",")
         [string]$pathReplacement = $this.Parameters.Values | Where-Object {
-            $_.Type -eq 'Path' -and
+			$_.Type -eq 'Path' -and
             $this.EndpointUrl -like "*{$($_.SystemName)}*"
         } | Format-String -Format " -Replace '{{{0}}}',`${1}" -Property SystemName, Name | Join-String ""
+		$pathModifier = ''
         if ($optionalParameter = $this.Parameters.Values | Where-Object { $_.Type -eq 'Path' -and $this.EndpointUrl -notlike "*{$($_.SystemName)}*" }) {
-            $pathReplacement = $pathReplacement + @'
-
-        if (${0}) {{ $__path += "/${0}" }}
-'@ -f $optionalParameter.Name
+            $pathModifier = 'if (${0}) {{ $__param.Path += "/${0}" }}' -f $optionalParameter.Name
         }
+		$actionsString = ''
+		if ($this.PassThruActions) { $actionsString = "`$__param += `$PSBoundParameters | ConvertTo-Hashtable -Include 'ErrorAction', 'WarningAction', 'Verbose'" }
         $scopesString = ''
-        if ($this.Scopes) { $scopesString = ' -RequiredScopes {0}' -f ($this.Scopes | Add-String "'" "'" | Join-String ',') }
+        if ($this.Scopes) { $scopesString = 'RequiredScopes = {0}' -f ($this.Scopes | Add-String "'" "'" | Join-String ',') }
         $processorString = ''
         if ($this.ProcessorCommand) { $processorString = " | $($this.ProcessorCommand)" }
         $serviceString = ''
-        if ($this.ServiceName) { $serviceString = " -Service $($this.ServiceName)" }
+        if ($this.ServiceName) { $serviceString = "Service = '$($this.ServiceName)'" }
         $mappingString = $this.Parameters.Values | Where-Object Type -NE Path | Format-String -Format "            '{0}' = '{1}'" -Property Name, SystemName | Join-String "`n"
         $miscParameterString = $this.Parameters.Values | Where-Object Type -eq Misc | Format-String -Format ' -{0} ${1}' -Property SystemName, Name | Join-String " "
 		$shouldProcessString = ''
@@ -153,7 +143,25 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
 			$shouldProcessString = '        if (-not $PSCmdlet.ShouldProcess("{0}","{1}")) {{ return }}' -f $target, $this.ShouldProcess
 		}
 
-        return $format -f $bodyString, $queryString, $this.EndpointUrl, $pathReplacement, $this.RestCommand, $this.Method, $scopesString, $serviceString, $processorString, $mappingString, $miscParameterString, $this.ConvertToHashtableCommand, $headerString, $shouldProcessString
+		return @"
+		`$__mapping = @{
+$mappingString
+		}
+
+		`$__param = @{
+			Body = `$PSBoundParameters | $($this.ConvertToHashtableCommand) -Include $bodyString -Mapping `$__mapping
+			Query = `$PSBoundParameters | $($this.ConvertToHashtableCommand) -Include $queryString -Mapping `$__mapping
+			Header = `$PSBoundParameters | $($this.ConvertToHashtableCommand) -Include $headerString -Mapping `$__mapping
+			Path = '$($this.EndpointUrl)'$pathReplacement
+			Method = '$($this.Method)'
+			$scopesString
+			$serviceString
+		}
+		$pathModifier
+		$actionsString
+$shouldProcessString
+		$($this.RestCommand) @__param$($miscParameterString)$($processorString)
+"@
     }
 
 	[string]ToCommand([bool]$NoHelp = $false) {
