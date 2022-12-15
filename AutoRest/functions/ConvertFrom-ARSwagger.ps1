@@ -347,7 +347,8 @@
 			foreach ($property in $CommandObject.PSObject.Properties) {
 				if ($property.Name -eq 'Parameters') { continue }
 				if ($property.Name -eq 'ParameterSets') {
-					foreach ($key in $commandOverrides.ParameterSets.Keys) {
+					foreach ($key in $commandOverrides.ParameterSets.Keys | Write-Output) {
+						if (-not $key) { continue }
 						$CommandObject.ParameterSets[$key] = $commandOverrides.ParameterSets.$key
 					}
 					continue

@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 1.0.2
+
++ Upd: Added support to pass through some common parameters via `PassThruActions` command setting
++ Fix: ConvertFrom-ARSwagger errors when parameterset keys are empty
+
 ## 1.0.0 (2022-04-14)
 
 + Upd: Added Support to disable any PSSA rule per command config 'PssaRulesIgnored' (string[])
