@@ -3,7 +3,7 @@
 	RootModule = 'AutoRest.psm1'
 
 	# Version number of this module.
-	ModuleVersion = '1.0.2'
+	ModuleVersion = '1.0.4'
 
 	# ID used to uniquely identify this module
 	GUID = '18c33632-995c-4b5e-82fb-c52c2f6a176f'

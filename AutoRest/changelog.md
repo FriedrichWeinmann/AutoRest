@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 1.0.4 (2024-03-18)
+
++ Upd: Export-ARCommand - Added `Start-` to the list of verbs that defaults to skip ShouldProcess requirements.
++ Fix: Export-ARCommand - ConvertToHashtableCommand is not respected for translating common parameters
+
 ## 1.0.2
 
 + Upd: Added support to pass through some common parameters via `PassThruActions` command setting

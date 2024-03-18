@@ -91,7 +91,7 @@
     }
 
     [string]ToParam() {
-		if (-not $this.ShouldProcess -and $this.Name -match '^New-|^Remove-|^Set-') {
+		if (-not $this.ShouldProcess -and $this.Name -match '^New-|^Remove-|^Set-|^Start-') {
 			$this.PssaRulesIgnored = @($this.PssaRulesIgnored) + @('PSUseShouldProcessForStateChangingFunctions')
 		}
 		$pssaString = ''
@@ -126,7 +126,7 @@ $($this.Parameters.Values | Sort-Object Weight | ForEach-Object ToParam | Join-S
             $pathModifier = 'if (${0}) {{ $__param.Path += "/${0}" }}' -f $optionalParameter.Name
         }
 		$actionsString = ''
-		if ($this.PassThruActions) { $actionsString = "`$__param += `$PSBoundParameters | ConvertTo-Hashtable -Include 'ErrorAction', 'WarningAction', 'Verbose'" }
+		if ($this.PassThruActions) { $actionsString = "`$__param += `$PSBoundParameters | $($this.ConvertToHashtableCommand) -Include 'ErrorAction', 'WarningAction', 'Verbose'" }
         $scopesString = ''
         if ($this.Scopes) { $scopesString = 'RequiredScopes = {0}' -f ($this.Scopes | Add-String "'" "'" | Join-String ',') }
         $processorString = ''
@@ -160,7 +160,8 @@ $mappingString
 		$pathModifier
 		$actionsString
 $shouldProcessString
-		$($this.RestCommand) @__param$($miscParameterString)$($processorString)
+		try { $($this.RestCommand) @__param$($miscParameterString)$($processorString) }
+		catch { `$PSCmdlet.ThrowTerminatingError(`$_) }
 "@
     }
 
